@@ -198,7 +198,7 @@ def dqn_learing(
         # Note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
-        learning_starts = 5 #TEMP
+        learning_starts = 5 #TODO: delete
         if (t > learning_starts and
                 t % learning_freq == 0 and
                 replay_buffer.can_sample(batch_size)):
@@ -235,10 +235,18 @@ def dqn_learing(
             #TODO: maybe should be in evaluate mount
             max_Q = torch.max(Q(next_obs.float()),dim=1)[0]
             bellman_err = rewards + gamma*max_Q - Q(curr_obs.float())[torch.arange(batch_size),curr_act.long()]
+            bellman_err = torch.clip(bellman_err, min=-1, max=1)
+            #TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
+            #       maskout post terminal status Q-values (see ReplayBuffer code).
 
+            #3c
+            #TODO: understand the given API (current.backward(d_error.data.unsqueeze(1)))
+            optimizer.zero_grad()
+            torch.mean(bellman_err).backward()
+            optimizer.step()
 
-
-            #####
+            #3d
+            #TODO: ALL
 
         ### 4. Log progress and keep track of statistics
         episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()

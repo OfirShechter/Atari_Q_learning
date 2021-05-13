@@ -124,7 +124,7 @@ def dqn_learing(
     ######
 
     # YOUR CODE HERE
-
+    Q = q_func(input_arg,num_actions)
     ######
 
 
@@ -180,7 +180,14 @@ def dqn_learing(
         #####
 
         # YOUR CODE HERE
-
+        idx = replay_buffer.store_frame(last_obs)
+        e_input = replay_buffer.encode_recent_observation()
+        action = select_epilson_greedy_action(Q, e_input, t)
+        obs, reward, done, info = env.step(action)
+        replay_buffer.store_effect(idx, action, reward, done)
+        if done:
+            obs = env.reset()
+        last_obs = obs
         #####
 
         # at this point, the environment should have been advanced one step (and
@@ -218,6 +225,15 @@ def dqn_learing(
             #####
 
             # YOUR CODE HERE
+            #3a
+            curr_obs, curr_act, rewards, next_obs, done_indic = replay_buffer.sample(batch_size)
+            device = torch.device('cuda') if USE_CUDA else torch.device('cpu')
+            curr_obs, curr_act, rewards, next_obs, done_indic = curr_obs.to(device), curr_act.to(device), rewards.to(device), next_obs.to(device), done_indic.to(device)
+
+            #3b
+
+            pass
+
 
             #####
 

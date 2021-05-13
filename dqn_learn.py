@@ -198,6 +198,7 @@ def dqn_learing(
         # Note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
+        learning_starts = 5 #TEMP
         if (t > learning_starts and
                 t % learning_freq == 0 and
                 replay_buffer.can_sample(batch_size)):
@@ -228,11 +229,13 @@ def dqn_learing(
             #3a
             curr_obs, curr_act, rewards, next_obs, done_indic = replay_buffer.sample(batch_size)
             device = torch.device('cuda') if USE_CUDA else torch.device('cpu')
-            curr_obs, curr_act, rewards, next_obs, done_indic = curr_obs.to(device), curr_act.to(device), rewards.to(device), next_obs.to(device), done_indic.to(device)
+            curr_obs, curr_act, rewards, next_obs, done_indic = torch.tensor(curr_obs,device=device), torch.tensor(curr_act,device=device),torch.tensor( rewards,device=device), torch.tensor(next_obs,device=device), torch.tensor(done_indic,device=device)
 
             #3b
+            #TODO: maybe should be in evaluate mount
+            max_Q = torch.max(Q(next_obs.float()),dim=1)[0]
+            bellman_err = rewards + gamma*max_Q - Q(curr_obs.float())[torch.arange(batch_size),curr_act.long()]
 
-            pass
 
 
             #####

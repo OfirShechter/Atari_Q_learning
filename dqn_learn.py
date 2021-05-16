@@ -120,11 +120,12 @@ def dqn_learing(
         else:
             return torch.IntTensor([[random.randrange(num_actions)]])
 
-    # Initialize target q function and q function, i.e. build the model.
+    # Initialize target q function and q function, i.e. build the model. #TODO: understand why 2 g_funq are needed
     ######
 
     # YOUR CODE HERE
     Q = q_func(input_arg,num_actions)
+    target_Q = q_func(input_arg,num_actions)
     ######
 
 
@@ -198,7 +199,7 @@ def dqn_learing(
         # Note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
-        learning_starts = 5 #TODO: delete
+        # learning_starts = 5 #TODO: delete
         if (t > learning_starts and
                 t % learning_freq == 0 and
                 replay_buffer.can_sample(batch_size)):
@@ -228,14 +229,14 @@ def dqn_learing(
             # YOUR CODE HERE
             #3a
             curr_obs, curr_act, rewards, next_obs, done_indic = replay_buffer.sample(batch_size)
-            device = torch.device('cuda') if USE_CUDA else torch.device('cpu')
+            device = torch.device('cuda') if USE_CUDA else torch.device('cpu') #TODO: maybe should be not in the loop
             curr_obs, curr_act, rewards, next_obs, done_indic = torch.tensor(curr_obs,device=device), torch.tensor(curr_act,device=device),torch.tensor( rewards,device=device), torch.tensor(next_obs,device=device), torch.tensor(done_indic,device=device)
 
             #3b
             #TODO: maybe should be in evaluate mount
             max_Q = torch.max(Q(next_obs.float()),dim=1)[0]
             bellman_err = rewards + gamma*max_Q - Q(curr_obs.float())[torch.arange(batch_size),curr_act.long()]
-            bellman_err = torch.clip(bellman_err, min=-1, max=1)
+            bellman_err = torch.clip(bellman_err, min=-1, max=1) * -1
             #TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
             #       maskout post terminal status Q-values (see ReplayBuffer code).
 
@@ -246,7 +247,10 @@ def dqn_learing(
             optimizer.step()
 
             #3d
-            #TODO: ALL
+            num_param_updates += 1
+            if (num_param_updates % target_update_freq == 0):
+                model_params = Q.state_dict()
+                target_Q.load_state_dict(model_params)
 
         ### 4. Log progress and keep track of statistics
         episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()

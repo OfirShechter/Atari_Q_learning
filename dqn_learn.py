@@ -199,7 +199,7 @@ def dqn_learing(
         # Note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
-        learning_starts = 5 #TODO: delete
+        # learning_starts = 5 #TODO: delete
         if (t > learning_starts and
                 t % learning_freq == 0 and
                 replay_buffer.can_sample(batch_size)):
@@ -253,7 +253,8 @@ def dqn_learing(
             #3c
             #TODO: understand the given API (current.backward(d_error.data.unsqueeze(1)))
             optimizer.zero_grad()
-            torch.mean(bellman_err).backward()
+            Q(curr_obs)[torch.arange(batch_size),curr_act.long()].unsqueeze(1).backward(bellman_err.data.unsqueeze(1))
+            # torch.mean(bellman_err).backward()
             optimizer.step()
 
             #3d

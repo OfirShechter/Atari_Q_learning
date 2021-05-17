@@ -244,18 +244,32 @@ def dqn_learing(
             done_mask = torch.tensor(tuple(map(lambda i: i != 1, done_indic)), device=device, dtype=torch.bool)
             next_obs, curr_obs = next_obs.float(), curr_obs.float()
             next_obs[done_mask] = torch.zeros((next_obs.shape[1],next_obs.shape[2],next_obs.shape[3]), device=device)
-            max_Q = torch.max(Q(next_obs),dim=1)[0]
-            bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
+            max_Q = torch.max(target_Q(next_obs),dim=1)[0]
+            curr_Q = Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
+            next_Q = rewards + gamma*max_Q
+            bellman_err = next_Q - curr_Q
+            # bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
             bellman_err = torch.clip(bellman_err, min=-1, max=1) * -1
             #TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
             #       maskout post terminal status Q-values (see ReplayBuffer code).
 
             #3c
             #TODO: understand the given API (current.backward(d_error.data.unsqueeze(1)))
+
+            # Compute Huber loss
+            criterion = nn.SmoothL1Loss()
+            loss = criterion(curr_Q, next_Q.unsqueeze(1))
+
+            # Optimize the model
             optimizer.zero_grad()
-            Q(curr_obs)[torch.arange(batch_size),curr_act.long()].unsqueeze(1).backward(bellman_err.data.unsqueeze(1))
-            # torch.mean(bellman_err).backward()
+            loss.backward()
+            for param in Q.parameters():
+                param.grad.data.clamp_(-1, 1)
             optimizer.step()
+            # optimizer.zero_grad()
+            # Q(curr_obs)[torch.arange(batch_size),curr_act.long()].unsqueeze(1).backward(bellman_err.data.unsqueeze(1))
+            # # torch.mean(bellman_err).backward()
+            # optimizer.step()
 
             #3d
             num_param_updates += 1

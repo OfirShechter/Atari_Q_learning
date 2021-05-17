@@ -199,7 +199,7 @@ def dqn_learing(
         # Note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
-        # learning_starts = 5 #TODO: delete
+        learning_starts = 5 #TODO: delete
         if (t > learning_starts and
                 t % learning_freq == 0 and
                 replay_buffer.can_sample(batch_size)):
@@ -234,8 +234,18 @@ def dqn_learing(
 
             #3b
             #TODO: maybe should be in evaluate mount
-            max_Q = torch.max(Q(next_obs.float()),dim=1)[0]
-            bellman_err = rewards + gamma*max_Q - Q(curr_obs.float())[torch.arange(batch_size),curr_act.long()]
+            # (a final state would've been the one after which simulation ended)
+    # non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
+    #                                         batch.next_state)), device=device, dtype=torch.bool)
+    # non_final_next_states = torch.cat([s for s in batch.next_state
+    #                                    if s is not None])
+
+            # filter terminal state
+            done_mask = torch.tensor(tuple(map(lambda i: i != 1, done_indic)), device=device, dtype=torch.bool)
+            next_obs, curr_obs = next_obs.float(), curr_obs.float()
+            next_obs[done_mask] = torch.zeros((next_obs.shape[1],next_obs.shape[2],next_obs.shape[3]), device=device)
+            max_Q = torch.max(Q(next_obs),dim=1)[0]
+            bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
             bellman_err = torch.clip(bellman_err, min=-1, max=1) * -1
             #TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
             #       maskout post terminal status Q-values (see ReplayBuffer code).

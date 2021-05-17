@@ -235,10 +235,6 @@ def dqn_learing(
             #3b
             #TODO: maybe should be in evaluate mount
             # (a final state would've been the one after which simulation ended)
-    # non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-    #                                         batch.next_state)), device=device, dtype=torch.bool)
-    # non_final_next_states = torch.cat([s for s in batch.next_state
-    #                                    if s is not None])
 
             # filter terminal state
             done_mask = torch.tensor(tuple(map(lambda i: i != 1, done_indic)), device=device, dtype=torch.bool)
@@ -247,25 +243,29 @@ def dqn_learing(
             max_Q = torch.max(target_Q(next_obs),dim=1)[0]
             curr_Q = Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
             next_Q = rewards + gamma*max_Q
+            next_Q = torch.clip(next_Q, min=-1, max=1) * -1
             bellman_err = next_Q - curr_Q
             # bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
-            bellman_err = torch.clip(bellman_err, min=-1, max=1) * -1
+            # bellman_err = torch.clip(bellman_err, min=-1, max=1) * -1
             #TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
             #       maskout post terminal status Q-values (see ReplayBuffer code).
 
             #3c
             #TODO: understand the given API (current.backward(d_error.data.unsqueeze(1)))
-
-            # Compute Huber loss
-            criterion = nn.SmoothL1Loss()
-            loss = criterion(curr_Q, next_Q.unsqueeze(1))
-
             # Optimize the model
             optimizer.zero_grad()
-            loss.backward()
-            for param in Q.parameters():
-                param.grad.data.clamp_(-1, 1)
+            curr_Q.backward(next_Q.data)
             optimizer.step()
+            # Compute Huber loss
+            # criterion = nn.SmoothL1Loss()
+            # loss = criterion(curr_Q, next_Q.unsqueeze(1))
+            #
+            # # Optimize the model
+            # optimizer.zero_grad()
+            # loss.backward()
+            # for param in Q.parameters():
+            #     param.grad.data.clamp_(-1, 1)
+            # optimizer.step()
             # optimizer.zero_grad()
             # Q(curr_obs)[torch.arange(batch_size),curr_act.long()].unsqueeze(1).backward(bellman_err.data.unsqueeze(1))
             # # torch.mean(bellman_err).backward()

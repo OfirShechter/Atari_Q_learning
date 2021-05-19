@@ -10,8 +10,14 @@ import random
 import gym.spaces
 
 import torch
+import os
+
 old_rpr = torch.Tensor.__repr__
 torch.Tensor.__repr__ = lambda self: f'{self.shape} {old_rpr(self)}'
+
+# os.environ['PATH'] += ':/home/yandex/AMNLP2021/glickman1/anaconda3/bin'
+os.environ['PATH'] += ':/home/joberant/nlp_fall_2021/glickman/anaconda3/bin'
+
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
@@ -22,11 +28,13 @@ from utils.gym import get_wrapper_by_name
 USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
 
+
 class Variable(autograd.Variable):
     def __init__(self, data, *args, **kwargs):
         if USE_CUDA:
             data = data.cuda()
         super(Variable, self).__init__(data, *args, **kwargs)
+
 
 """
     OptimizerSpec containing following attributes
@@ -40,21 +48,21 @@ Statistic = {
     "best_mean_episode_rewards": []
 }
 
-def dqn_learing(
-    env,
-    q_func,
-    optimizer_spec,
-    exploration,
-    stopping_criterion=None,
-    replay_buffer_size=1000000,
-    batch_size=32,
-    gamma=0.99,
-    learning_starts=50000,
-    learning_freq=4,
-    frame_history_len=4,
-    target_update_freq=10000
-    ):
 
+def dqn_learing(
+        env,
+        q_func,
+        optimizer_spec,
+        exploration,
+        stopping_criterion=None,
+        replay_buffer_size=1000000,
+        batch_size=32,
+        gamma=0.99,
+        learning_starts=50000,
+        learning_freq=4,
+        frame_history_len=4,
+        target_update_freq=10000
+):
     """Run Deep Q-learning algorithm.
 
     You can specify your own convnet using q_func.
@@ -97,7 +105,7 @@ def dqn_learing(
         each update to the target Q network
     """
     assert type(env.observation_space) == gym.spaces.Box
-    assert type(env.action_space)      == gym.spaces.Discrete
+    assert type(env.action_space) == gym.spaces.Discrete
 
     ###############
     # BUILD MODEL #
@@ -118,7 +126,8 @@ def dqn_learing(
         if sample > eps_threshold:
             obs = torch.from_numpy(obs).type(dtype).unsqueeze(0) / 255.0
             # Use volatile = True if variable is only used in inference mode, i.e. don’t save the history
-            return model(Variable(obs, volatile=True)).data.max(1)[1].cpu()
+            with torch.no_grad():
+                return model(Variable(obs)).data.max(1)[1].cpu()
         else:
             return torch.IntTensor([[random.randrange(num_actions)]])
 
@@ -126,12 +135,14 @@ def dqn_learing(
     ######
 
     # YOUR CODE HERE
-    device = torch.device('cuda') if USE_CUDA else torch.device('cpu') # connect to device (pytorch)
+    device = torch.device('cuda') if USE_CUDA else torch.device('cpu')  # connect to device (pytorch)
 
-    Q = q_func(input_arg,num_actions)
-    target_Q = q_func(input_arg,num_actions)
+    Q = q_func(input_arg, num_actions)
+    Q = Q.to(device)
+    target_Q = q_func(input_arg, num_actions)
+    target_Q = target_Q.to(device)
+
     ######
-
 
     # Construct Q network optimizer function
     optimizer = optimizer_spec.constructor(Q.parameters(), **optimizer_spec.kwargs)
@@ -145,7 +156,9 @@ def dqn_learing(
     num_param_updates = 0
     mean_episode_reward = -float('nan')
     best_mean_episode_reward = -float('inf')
+
     last_obs = env.reset()
+
     LOG_EVERY_N_STEPS = 10000
 
     for t in count():
@@ -231,31 +244,35 @@ def dqn_learing(
             #####
 
             # YOUR CODE HERE
-            #3a
+            # 3a
             curr_obs, curr_act, rewards, next_obs, done_indic = replay_buffer.sample(batch_size)
 
-            curr_obs, curr_act, rewards, next_obs, done_indic = torch.tensor(curr_obs,device=device), torch.tensor(curr_act,device=device),torch.tensor( rewards,device=device), torch.tensor(next_obs,device=device), torch.tensor(done_indic,device=device)
+            curr_obs, curr_act, rewards, next_obs, done_indic = torch.tensor(curr_obs, device=device), torch.tensor(
+                curr_act, device=device), torch.tensor(rewards, device=device), torch.tensor(next_obs,
+                                                                                             device=device), torch.tensor(
+                done_indic, device=device)
 
-            #3b
-            #TODO: maybe should be in evaluate mount
+            # 3b
+            # TODO: maybe should be in evaluate mount
             # (a final state would've been the one after which simulation ended)
 
             # filter terminal state
             done_mask = torch.tensor(tuple(map(lambda i: i == 1, done_indic)), device=device, dtype=torch.bool)
             next_obs, curr_obs = next_obs.float(), curr_obs.float()
-            next_obs[done_mask] = torch.zeros((next_obs.shape[1],next_obs.shape[2],next_obs.shape[3]), device=device)
-            max_Q = torch.max(target_Q(next_obs),dim=1)[0]
-            curr_Q = Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
-            next_Q = rewards + gamma*max_Q
+            # next_obs[done_mask] = torch.zeros((next_obs.shape[1], next_obs.shape[2], next_obs.shape[3]), device=device)
+            next_obs[done_mask] = 0.
+            max_Q = torch.max(target_Q(next_obs), dim=1)[0]
+            curr_Q = Q(curr_obs)[torch.arange(batch_size), curr_act.long()]
+            next_Q = rewards + gamma * max_Q
             bellman_err = next_Q - curr_Q
             bellman_err = bellman_err.clip(min=-1, max=1) * -1
             # bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
             # bellman_err = torch.clip(bellman_err, min=-1, max=1) * -1
-            #TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
+            # TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
             #       maskout post terminal status Q-values (see ReplayBuffer code).
 
-            #3c
-            #TODO: understand the given API (current.backward(d_error.data.unsqueeze(1)))
+            # 3c
+            # TODO: understand the given API (current.backward(d_error.data.unsqueeze(1)))
             # Optimize the model
             optimizer.zero_grad()
             curr_Q.backward(bellman_err.data)
@@ -275,7 +292,7 @@ def dqn_learing(
             # # torch.mean(bellman_err).backward()
             # optimizer.step()
 
-            #3d
+            # 3d
             num_param_updates += 1
             if (num_param_updates % target_update_freq == 0):
                 model_params = Q.state_dict()

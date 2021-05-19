@@ -247,7 +247,6 @@ def dqn_learing(
             max_Q = torch.max(target_Q(next_obs),dim=1)[0]
             curr_Q = Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
             next_Q = rewards + gamma*max_Q
-            next_Q = torch.clip(next_Q, min=-1, max=1)
             bellman_err = next_Q - curr_Q
             bellman_err = bellman_err.clip(min=-1, max=1) * -1
             # bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]

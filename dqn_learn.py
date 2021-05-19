@@ -10,6 +10,8 @@ import random
 import gym.spaces
 
 import torch
+old_rpr = torch.Tensor.__repr__
+torch.Tensor.__repr__ = lambda self: f'{self.shape} {old_rpr(self)}'
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
@@ -124,6 +126,8 @@ def dqn_learing(
     ######
 
     # YOUR CODE HERE
+    device = torch.device('cuda') if USE_CUDA else torch.device('cpu') # connect to device (pytorch)
+
     Q = q_func(input_arg,num_actions)
     target_Q = q_func(input_arg,num_actions)
     ######
@@ -229,7 +233,7 @@ def dqn_learing(
             # YOUR CODE HERE
             #3a
             curr_obs, curr_act, rewards, next_obs, done_indic = replay_buffer.sample(batch_size)
-            device = torch.device('cuda') if USE_CUDA else torch.device('cpu') #TODO: maybe should be not in the loop
+
             curr_obs, curr_act, rewards, next_obs, done_indic = torch.tensor(curr_obs,device=device), torch.tensor(curr_act,device=device),torch.tensor( rewards,device=device), torch.tensor(next_obs,device=device), torch.tensor(done_indic,device=device)
 
             #3b
@@ -237,14 +241,15 @@ def dqn_learing(
             # (a final state would've been the one after which simulation ended)
 
             # filter terminal state
-            done_mask = torch.tensor(tuple(map(lambda i: i != 1, done_indic)), device=device, dtype=torch.bool)
+            done_mask = torch.tensor(tuple(map(lambda i: i == 1, done_indic)), device=device, dtype=torch.bool)
             next_obs, curr_obs = next_obs.float(), curr_obs.float()
             next_obs[done_mask] = torch.zeros((next_obs.shape[1],next_obs.shape[2],next_obs.shape[3]), device=device)
             max_Q = torch.max(target_Q(next_obs),dim=1)[0]
             curr_Q = Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
             next_Q = rewards + gamma*max_Q
-            next_Q = torch.clip(next_Q, min=-1, max=1) * -1
+            next_Q = torch.clip(next_Q, min=-1, max=1)
             bellman_err = next_Q - curr_Q
+            bellman_err = bellman_err.clip(min=-1, max=1) * -1
             # bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
             # bellman_err = torch.clip(bellman_err, min=-1, max=1) * -1
             #TODO: unterstand Note: don't forget to clip the error between [-1,1], multiply is by -1 (since pytorch minimizes) and
@@ -254,7 +259,7 @@ def dqn_learing(
             #TODO: understand the given API (current.backward(d_error.data.unsqueeze(1)))
             # Optimize the model
             optimizer.zero_grad()
-            curr_Q.backward(next_Q.data)
+            curr_Q.backward(bellman_err.data)
             optimizer.step()
             # Compute Huber loss
             # criterion = nn.SmoothL1Loss()

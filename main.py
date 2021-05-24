@@ -17,6 +17,8 @@ LEARNING_RATE = 0.00025
 ALPHA = 0.95
 EPS = 0.01
 
+print('Hxxx')
+
 def main(env, num_timesteps):
 
     def stopping_criterion(env):
@@ -55,6 +57,7 @@ if __name__ == '__main__':
 
     # Run training
     seed = 0 # Use a seed of zero (you may want to randomize the seed!)
+    print('qweqwe')
     env = get_env(task, seed)
 
     main(env, task.max_timesteps)

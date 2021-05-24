@@ -203,7 +203,7 @@ def dqn_learing(
         # Note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
-        # learning_starts = 5 #TODO: delete
+        # learning_starts = 100 #TODO: delete
         if (t > learning_starts and
                 t % learning_freq == 0 and
                 replay_buffer.can_sample(batch_size)):
@@ -242,7 +242,7 @@ def dqn_learing(
 
             # filter terminal state
             done_mask = torch.tensor(tuple(map(lambda i: i == 1, done_indic)), device=device, dtype=torch.bool)
-            next_obs, curr_obs = next_obs.float(), curr_obs.float()
+            next_obs, curr_obs = next_obs.float() / 255, curr_obs.float() / 255
             next_obs[done_mask] = torch.zeros((next_obs.shape[1],next_obs.shape[2],next_obs.shape[3]), device=device)
             max_Q = torch.max(target_Q(next_obs),dim=1)[0]
             curr_Q = Q(curr_obs)[torch.arange(batch_size),curr_act.long()]

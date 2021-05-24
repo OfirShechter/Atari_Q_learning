@@ -319,9 +319,11 @@ def dqn_learing(
             sys.stdout.flush()
 
             # Dump statistics to pickle
-            with open('statistics.pkl', 'wb') as f:
+            import time
+            pkl = f'statistics_{time.time()}.pkl'
+            with open('%s' % pkl, 'wb') as f:
                 pickle.dump(Statistic, f)
-                print("Saved to %s" % 'statistics.pkl')
+                print("Saved to %s" % pkl)
 
 
 def print_stuff(Q, batch_size, exploration, frame_history_len, gamma, learning_freq, learning_starts, optimizer_spec,

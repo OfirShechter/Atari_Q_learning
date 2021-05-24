@@ -142,6 +142,9 @@ def dqn_learing(
     target_Q = q_func(input_arg, num_actions)
     target_Q = target_Q.to(device)
 
+    print_stuff(Q, batch_size, exploration, frame_history_len, gamma, learning_freq, learning_starts, optimizer_spec,
+                replay_buffer_size, stopping_criterion, target_update_freq)
+
     ######
 
     # Construct Q network optimizer function
@@ -259,10 +262,10 @@ def dqn_learing(
             # filter terminal state
             done_mask = torch.tensor(tuple(map(lambda i: i == 1, done_indic)), device=device, dtype=torch.bool)
             next_obs, curr_obs = next_obs.float() / 255, curr_obs.float() / 255
-            next_obs[done_mask] = torch.zeros((next_obs.shape[1],next_obs.shape[2],next_obs.shape[3]), device=device)
-            max_Q = torch.max(target_Q(next_obs),dim=1)[0]
-            curr_Q = Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
-            next_Q = rewards + gamma*max_Q
+            next_obs[done_mask] = torch.zeros((next_obs.shape[1], next_obs.shape[2], next_obs.shape[3]), device=device)
+            max_Q = torch.max(target_Q(next_obs), dim=1)[0]
+            curr_Q = Q(curr_obs)[torch.arange(batch_size), curr_act.long()]
+            next_Q = rewards + gamma * max_Q
             bellman_err = next_Q - curr_Q
             bellman_err = bellman_err.clip(min=-1, max=1) * -1
             # bellman_err = rewards + gamma*max_Q - Q(curr_obs)[torch.arange(batch_size),curr_act.long()]
@@ -319,3 +322,18 @@ def dqn_learing(
             with open('statistics.pkl', 'wb') as f:
                 pickle.dump(Statistic, f)
                 print("Saved to %s" % 'statistics.pkl')
+
+
+def print_stuff(Q, batch_size, exploration, frame_history_len, gamma, learning_freq, learning_starts, optimizer_spec,
+                replay_buffer_size, stopping_criterion, target_update_freq):
+    print('optimizer_spec', optimizer_spec)
+    print('exploration', exploration)
+    print('stopping_criterion', stopping_criterion)
+    print('replay_buffer_size', replay_buffer_size)
+    print('batch_size', batch_size)
+    print('gamma', gamma)
+    print('learning_starts', learning_starts)
+    print('learning_freq', learning_freq)
+    print('frame_history_len', frame_history_len)
+    print('target_update_freq', target_update_freq)
+    print('Q model', Q)

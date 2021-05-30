@@ -221,6 +221,10 @@ def dqn_learing(
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
         # learning_starts = 100 #TODO: delete
+        # learning_starts=10
+        # if (t > 10_00):
+        #     1/0
+
         if (t > learning_starts and
                 t % learning_freq == 0 and
                 replay_buffer.can_sample(batch_size)):
@@ -320,11 +324,44 @@ def dqn_learing(
             sys.stdout.flush()
 
             # Dump statistics to pickle
-            import time
-            pkl = f'statistics_{time.time()}.pkl'
+            pkl = create_stats_file_name(Q,
+                                         batch_size,
+                                         exploration,
+                                         frame_history_len,
+                                         gamma,
+                                         learning_freq,
+                                         learning_starts,
+                                         optimizer_spec,
+                                         replay_buffer_size,
+                                         stopping_criterion,
+                                         target_update_freq)
             with open('%s' % pkl, 'wb') as f:
                 pickle.dump(Statistic, f)
                 print("Saved to %s" % pkl)
+
+
+import time
+
+
+def create_stats_file_name(Q, batch_size, exploration, frame_history_len, gamma, learning_freq, learning_starts,
+                           optimizer_spec,
+                           replay_buffer_size, stopping_criterion, target_update_freq):
+    suffix = f'''
+    Q_{Q}
+batch_size_{batch_size}
+exploration_{exploration}
+frame_history_len_{frame_history_len}
+gamma_{gamma}
+learning_freq_{learning_freq}
+learning_starts_{learning_starts}
+optimizer_spec_{optimizer_spec}
+replay_buffer_size_{replay_buffer_size}
+stopping_criterion_{stopping_criterion}
+target_update_freq_{target_update_freq}
+    '''
+
+    pkl = f'statistics_{suffix}.pkl'
+    return pkl
 
 
 def print_stuff(Q, batch_size, exploration, frame_history_len, gamma, learning_freq, learning_starts, optimizer_spec,

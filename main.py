@@ -32,7 +32,7 @@ def main(env, num_timesteps):
         kwargs=dict(lr=LEARNING_RATE, alpha=ALPHA, eps=EPS),
     )
 
-    exploration_schedule = LinearSchedule(1000000, 0.001)
+    exploration_schedule = LinearSchedule(1000000, 0.05)
 
     dqn_learing(
         env=env,

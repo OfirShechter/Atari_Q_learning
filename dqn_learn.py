@@ -16,7 +16,8 @@ old_rpr = torch.Tensor.__repr__
 torch.Tensor.__repr__ = lambda self: f'{self.shape} {old_rpr(self)}'
 
 # os.environ['PATH'] += ':/home/yandex/AMNLP2021/glickman1/anaconda3/bin'
-os.environ['PATH'] += ':/home/joberant/nlp_fall_2021/glickman/anaconda3/bin'
+# os.environ['PATH'] += ':/home/joberant/nlp_fall_2021/glickman/anaconda3/bin'
+os.environ['PATH'] += ':/home/yandex/AMNLP2021/glickman1/anaconda3/bin/ffmpeg-git-20210520-amd64-static'
 
 import torch.nn as nn
 import torch.nn.functional as F
